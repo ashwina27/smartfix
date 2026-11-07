@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+{% block title %} – Admin Dashboard{% endblock %}
+
+{% set status_cls = {
+  'Pending':     'badge-pending',
+  'Accepted':    'badge-accepted',
+  'In Progress': 'badge-inprogress',
+  'Completed':   'badge-completed',
+  'Rejected':    'badge-rejected',
+  'Cancelled':   'badge-cancelled',
+  'Open':        'badge-open',
+  'Resolved':    'badge-resolved'
+} %}
+
+{% block body %}
+
+<div class="page-header">
+  <h3>Admin Dashboard</h3>
+</div>
+
+{# ── Stat cards ──
+   Data source: pending (list), workers (list), status_counts (sum), complaints (list) #}
+<div class="stat-cards">
+  <div class="stat-card sc-warning">
+    <span class="sc-icon">⏳</span>
+    <span class="sc-val">{{ pending | length }}</span>
+    <span class="sc-label">Pending Verification</span>
+  </div>
+  <div class="stat-card sc-brand">
+    <span class="sc-icon">👷</span>
+    <span class="sc-val">{{ workers | length }}</span>
+    <span class="sc-label">Total Workers</span>
+  </div>
+  <div class="stat-card sc-success">
+    <span class="sc-icon">📋</span>
+    <span class="sc-val">{{ status_counts | sum(attribute='n') }}</span>
+    <span class="sc-label">Total Requests</span>
+  </div>
+  <div class="stat-card sc-danger">
+    <span class="sc-icon">⚠️</span>
+    <span class="sc-val">
+      {{ complaints | selectattr('status','equalto','Open') | list | length }}
+    </span>
+    <span class="sc-label">Open Complaints</span>
+  </div>
+</div>
+
+
+{# ════════════════════════════════════
+   1 · Worker Verification
+════════════════════════════════════ #}
+<div class="admin-section">
+  <h4>Worker Verification</h4>
+
+  {% if pending %}
+    <div class="table-wrap">
+      <table class="sf-table">
+        <thead>
+          <tr>
+            <th>Name</th><th>Phone</th><th>Email</th><th>Experience</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for w in pending %}
+          <tr>
+            <td><strong>{{ w.name }}</strong></td>
+            <td>{{ w.phone }}</td>
+            <td style="font-size:.82rem">{{ w.email }}</td>
+            <td>{{ w.experience_years }} yr{{ 's' if w.experience_years != 1 }}</td>
+            <td>
+              <div class="action-group">
+                <form method="post"
+                      action="{{ url_for('admin_verify', wid=w.worker_id, decision='Verified') }}">
+                  <button class="btn btn-success btn-sm">Approve</button>
+                </form>
+                <form method="post"
+                      action="{{ url_for('admin_verify', wid=w.worker_id, decision='Rejected') }}">
+                  <button class="btn btn-outline-danger btn-sm">Reject</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  {% else %}
+    <div class="empty-state" style="padding:1.5rem 1rem">
+      <span class="es-icon" style="font-size:1.6rem">✅</span>
+      <p>No workers awaiting verification.</p>
+    </div>
+  {% endif %}
+</div>
+
+
+{# ════════════════════════════════════
+   2 · Complaints
+════════════════════════════════════ #}
+<div class="admin-section">
+  <h4>Complaints</h4>
+
+  {% if complaints %}
+    <div class="table-wrap">
+      <table class="sf-table">
+        <thead>
+          <tr>
+            <th>#</th><th>Customer</th><th>Worker</th>
+            <th>Description</th><th>Date</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in complaints %}
+          <tr>
+            <td style="color:var(--muted);font-size:.8rem">#{{ c.complaint_id }}</td>
+            <td>{{ c.customer }}</td>
+            <td>{{ c.worker }}</td>
+            <td style="max-width:220px;font-size:.82rem">{{ c.description }}</td>
+            <td style="font-size:.8rem;white-space:nowrap">{{ c.created_date }}</td>
+            <td>
+              <span class="badge {{ status_cls.get(c.status, '') }}">{{ c.status }}</span>
+            </td>
+            <td>
+              {% if c.status == 'Open' %}
+                <form method="post"
+                      action="{{ url_for('admin_resolve', cid=c.complaint_id) }}">
+                  <button class="btn btn-outline btn-sm">Mark Resolved</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  {% else %}
+    <div class="empty-state" style="padding:1.5rem 1rem">
+      <span class="es-icon" style="font-size:1.6rem">🎉</span>
+      <p>No complaints on record.</p>
+    </div>
+  {% endif %}
+</div>
+
+
+{# ════════════════════════════════════
+   3 · Reports (horizontal CSS bar charts)
+════════════════════════════════════ #}
+<div class="admin-section">
+  <h4>Reports</h4>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.1rem">
+
+    {# Requests by status #}
+    <div class="card">
+      <div class="card-header">Requests by Status</div>
+      <div class="card-body">
+        {% if status_counts %}
+          {% set maxn = (status_counts | map(attribute='n') | list | max) %}
+          <div class="bar-list">
+            {% for r in status_counts %}
+              {% set bar_color = {
+                'Completed':   'var(--success)',
+                'Pending':     'var(--warning)',
+                'In Progress': 'var(--purple)',
+                'Accepted':    'var(--brand)',
+                'Cancelled':   'var(--danger)',
+                'Rejected':    'var(--danger)'
+              }.get(r.status, 'var(--brand)') %}
+              <div class="bar-item">
+                <span class="bar-label">{{ r.status }}</span>
+                <div class="bar-track">
+                  <div class="bar-fill"
+                       style="width:{{ (r.n / maxn * 100) | round | int }}%;background:{{ bar_color }}">
+                  </div>
+                </div>
+                <span class="bar-count">{{ r.n }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="color:var(--muted);font-size:.85rem">No data yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Most requested services #}
+    <div class="card">
+      <div class="card-header">Most Requested Services</div>
+      <div class="card-body">
+        {% if demand %}
+          {% set maxd = (demand | map(attribute='n') | list | max) %}
+          <div class="bar-list">
+            {% for r in demand %}
+              <div class="bar-item">
+                <span class="bar-label">{{ r.service_name }}</span>
+                <div class="bar-track">
+                  <div class="bar-fill"
+                       style="width:{{ (r.n / maxd * 100) | round | int }}%"></div>
+                </div>
+                <span class="bar-count">{{ r.n }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="color:var(--muted);font-size:.85rem">No data yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Verified workers per service #}
+    <div class="card">
+      <div class="card-header">Verified Workers per Service</div>
+      <div class="card-body">
+        {% if by_service %}
+          {% set maxs = (by_service | map(attribute='n') | list | max) %}
+          <div class="bar-list">
+            {% for r in by_service %}
+              <div class="bar-item">
+                <span class="bar-label">{{ r.service_name }}</span>
+                <div class="bar-track">
+                  <div class="bar-fill"
+                       style="width:{{ (r.n / maxs * 100) | round | int }}%;background:var(--success)">
+                  </div>
+                </div>
+                <span class="bar-count">{{ r.n }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="color:var(--muted);font-size:.85rem">No data yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+{# ════════════════════════════════════
+   4 · Workers rated above average (chips)
+════════════════════════════════════ #}
+<div class="admin-section">
+  <h4>Workers Rated Above Average</h4>
+  <p style="font-size:.82rem;color:var(--muted);margin-bottom:.75rem">
+    Workers whose avg rating exceeds the platform-wide average.
+  </p>
+  {% if top %}
+    <div class="chips">
+      {% for t in top %}
+        <span class="chip">
+          {{ t.name }}
+          <span class="chip-star">★ {{ t.avg_rating }}</span>
+        </span>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p style="color:var(--muted);font-size:.85rem">No review data yet.</p>
+  {% endif %}
+</div>
+
+
+{# ════════════════════════════════════
+   5 · Worker Performance Table
+════════════════════════════════════ #}
+<div class="admin-section">
+  <h4>Worker Performance Summary</h4>
+  <div class="table-wrap">
+    <table class="sf-table">
+      <thead>
+        <tr>
+          <th>Worker</th><th>Status</th><th>Completed</th>
+          <th>Cancelled</th><th>Avg Rating</th><th>On-time</th><th>Reliability</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for w in workers %}
+        <tr>
+          <td><strong>{{ w.name }}</strong></td>
+          <td>
+            <span class="badge {{ 'badge-verified' if w.verification_status == 'Verified' else 'badge-pending' }}">
+              {{ w.verification_status }}
+            </span>
+          </td>
+          <td>{{ w.completed_jobs }}</td>
+          <td>{{ w.cancelled_jobs }}</td>
+          <td>
+            {% if w.avg_rating is not none %}
+              <span style="color:var(--accent)">★</span> {{ w.avg_rating }}
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if w.on_time_rate is not none %}{{ w.on_time_rate }}%{% else %}—{% endif %}
+          </td>
+          <td>
+            <span class="rel-badge rel-{{ w.reliability }}">{{ w.reliability }}</span>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align:center;color:var(--muted)">No workers yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+{# ════════════════════════════════════
+   6 · Add Service Category
+   field names: service_name, description
+════════════════════════════════════ #}
+<div class="admin-section">
+  <h4>Service Categories</h4>
+  <div class="card" style="max-width:680px">
+    <div class="card-header">Add New Service</div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('admin_add_service') }}"
+            style="display:grid;grid-template-columns:1fr 2fr auto;gap:.75rem;align-items:end">
+        <div>
+          <label class="form-label">Service name</label>
+          <input class="form-control" name="service_name"
+                 placeholder="e.g. Pest Control" required>
+        </div>
+        <div>
+          <label class="form-label">Description</label>
+          <input class="form-control" name="description"
+                 placeholder="Short description (optional)">
+        </div>
+        <button class="btn btn-primary">Add</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

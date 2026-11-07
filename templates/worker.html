@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %} – Worker Dashboard{% endblock %}
+
+{% set status_cls = {
+  'Pending':     'badge-pending',
+  'Accepted':    'badge-accepted',
+  'In Progress': 'badge-inprogress',
+  'Completed':   'badge-completed',
+  'Rejected':    'badge-rejected',
+  'Cancelled':   'badge-cancelled'
+} %}
+
+{% block body %}
+
+<div class="page-header">
+  <h3>Worker Dashboard</h3>
+  <span class="badge {{ 'badge-verified' if summary.verification_status == 'Verified' else 'badge-pending' }}">
+    {{ summary.verification_status }}
+  </span>
+</div>
+
+{# ── Verification banner (shown only for non-verified accounts) ── #}
+{% if summary.verification_status != 'Verified' %}
+  <div class="worker-banner">
+    ⚠&nbsp; Your account is <strong>{{ summary.verification_status }}</strong>.
+    You will not appear in customer searches until an admin approves your profile.
+  </div>
+{% endif %}
+
+{# ── Stat cards ── #}
+<div class="stat-cards">
+  <div class="stat-card sc-success">
+    <span class="sc-icon">✅</span>
+    <span class="sc-val">{{ summary.completed_jobs }}</span>
+    <span class="sc-label">Completed</span>
+  </div>
+  <div class="stat-card sc-danger">
+    <span class="sc-icon">❌</span>
+    <span class="sc-val">{{ summary.cancelled_jobs }}</span>
+    <span class="sc-label">Cancelled</span>
+  </div>
+  <div class="stat-card sc-warning">
+    <span class="sc-icon">⭐</span>
+    <span class="sc-val">{{ summary.avg_rating if summary.avg_rating is not none else '—' }}</span>
+    <span class="sc-label">Avg Rating</span>
+  </div>
+  <div class="stat-card sc-brand">
+    <span class="sc-icon">⏱</span>
+    <span class="sc-val">
+      {% if summary.on_time_rate is not none %}{{ summary.on_time_rate }}%{% else %}—{% endif %}
+    </span>
+    <span class="sc-label">On-time</span>
+  </div>
+  <div class="stat-card">
+    <span class="sc-icon">🏅</span>
+    <span class="sc-val" style="font-size:1.3rem">{{ summary.reliability }}</span>
+    <span class="sc-label">Reliability</span>
+  </div>
+</div>
+
+{# ── Requests table ── #}
+<h4 style="margin-bottom:1rem">Requests &amp; Jobs</h4>
+
+{% if rows %}
+  <div class="table-wrap">
+    <table class="sf-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Customer</th>
+          <th>Service</th>
+          <th>Preferred Date</th>
+          <th>Address / Problem</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td style="color:var(--muted);font-size:.8rem">#{{ r.request_id }}</td>
+          <td>
+            <strong>{{ r.customer_name }}</strong>
+            <div style="font-size:.75rem;color:var(--muted)">{{ r.customer_phone }}</div>
+          </td>
+          <td>{{ r.service_name }}</td>
+          <td style="white-space:nowrap;font-size:.82rem">
+            {{ r.preferred_date.strftime('%d %b %Y') if r.preferred_date else '—' }}
+          </td>
+          <td style="max-width:200px">
+            <span style="font-size:.82rem">{{ r.address }}</span>
+            {% if r.description %}
+              <div style="font-size:.75rem;color:var(--muted);margin-top:2px">{{ r.description }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge {{ status_cls.get(r.status, '') }}">{{ r.status }}</span>
+          </td>
+          <td>
+            <div class="action-group">
+
+              {# Pending: accept or reject — action → worker_action #}
+              {% if r.status == 'Pending' %}
+                <form method="post"
+                      action="{{ url_for('worker_action', rid=r.request_id, action='accept') }}">
+                  <button class="btn btn-success btn-sm">Accept</button>
+                </form>
+                <form method="post"
+                      action="{{ url_for('worker_action', rid=r.request_id, action='reject') }}">
+                  <button class="btn btn-outline-danger btn-sm">Reject</button>
+                </form>
+
+              {# Accepted: start the job #}
+              {% elif r.status == 'Accepted' %}
+                <form method="post"
+                      action="{{ url_for('worker_action', rid=r.request_id, action='start') }}">
+                  <button class="btn btn-primary btn-sm">Start Job</button>
+                </form>
+
+              {# In Progress: enter cost and mark complete — field name: cost #}
+              {% elif r.status == 'In Progress' %}
+                <form method="post"
+                      action="{{ url_for('worker_action', rid=r.request_id, action='complete') }}">
+                  <div class="cost-row">
+                    <input type="number" name="cost" step="0.01" min="0"
+                           placeholder="₹ Cost" required>
+                    <button class="btn btn-success btn-sm">Complete</button>
+                  </div>
+                </form>
+
+              {% else %}
+                <span style="color:var(--muted);font-size:.78rem">—</span>
+              {% endif %}
+
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+{% else %}
+  <div class="empty-state">
+    <span class="es-icon">📭</span>
+    <strong style="color:var(--text)">No requests yet</strong>
+    <p>Customer requests will appear here once your account is verified and customers book you.</p>
+  </div>
+{% endif %}
+
+{% endblock %}

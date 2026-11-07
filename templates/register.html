@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %} – Register{% endblock %}
+{% block body %}
+
+<div class="auth-outer">
+  <div style="width:100%;max-width:520px;margin:0 auto">
+    <div class="auth-card">
+      <h3>Create account</h3>
+      <p class="auth-sub">Join SmartFix to book or offer services.</p>
+
+      <form method="post" action="{{ url_for('register') }}">
+
+        {# Role toggle — name="role" required by backend #}
+        <div class="form-group">
+          <label class="form-label">I want to…</label>
+          <div class="seg-control">
+            <input type="radio" name="role" id="reg-cust" value="customer" checked
+                   onchange="toggleRole(false)">
+            <label for="reg-cust">Book services</label>
+            <input type="radio" name="role" id="reg-work" value="worker"
+                   onchange="toggleRole(true)">
+            <label for="reg-work">Offer services</label>
+          </div>
+        </div>
+
+        {# Common fields #}
+        <div class="form-group">
+          <label class="form-label" for="rname">Full name</label>
+          <input class="form-control" type="text" id="rname" name="name"
+                 placeholder="e.g. Priya Raman" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="rphone">Phone</label>
+          <input class="form-control" type="tel" id="rphone" name="phone"
+                 placeholder="10-digit mobile number" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="remail">Email</label>
+          <input class="form-control" type="email" id="remail" name="email"
+                 placeholder="you@example.com" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="rpass">Password</label>
+          <input class="form-control" type="password" id="rpass" name="password"
+                 placeholder="Min. 6 characters" required>
+        </div>
+
+        {# Customer-only field #}
+        <div id="cust-fields">
+          <div class="form-group">
+            <label class="form-label" for="raddr">Address</label>
+            <textarea class="form-control" id="raddr" name="address" rows="2"
+                      placeholder="Your service address"></textarea>
+          </div>
+        </div>
+
+        {# Worker-only fields — hidden initially #}
+        <div id="worker-fields" style="display:none">
+          <div class="form-group">
+            <label class="form-label" for="rexp">Years of experience</label>
+            <input class="form-control" type="number" id="rexp" name="experience_years"
+                   min="0" placeholder="e.g. 5">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Services you offer</label>
+            <div class="pill-checks">
+              {% for s in services %}
+                <input type="checkbox" id="svc{{ s.service_id }}"
+                       name="services" value="{{ s.service_id }}">
+                <label for="svc{{ s.service_id }}">{{ s.service_name }}</label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:.75rem">
+          Create account
+        </button>
+      </form>
+
+      <p class="auth-footer">
+        Already have an account? <a href="{{ url_for('login') }}">Log in</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleRole(isWorker) {
+  document.getElementById('worker-fields').style.display = isWorker ? 'block' : 'none';
+  document.getElementById('cust-fields').style.display   = isWorker ? 'none'  : 'block';
+}
+</script>
+{% endblock %}

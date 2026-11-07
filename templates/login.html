@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %} – Login{% endblock %}
+{% block body %}
+
+<div class="auth-outer">
+  <div class="auth-grid">
+
+    {# ── Left: gradient hero ── #}
+    <div class="auth-hero">
+      <div>
+        <div style="font-size:2.8rem;margin-bottom:1rem">🔧</div>
+        <h1>Reliable local services, at your doorstep.</h1>
+        <p>Find verified electricians, plumbers, AC technicians and more — with transparent ratings and on-time records for every worker.</p>
+        <ul>
+          <li><span class="check">✓</span> Verified professionals only</li>
+          <li><span class="check">✓</span> Track every job from request to completion</li>
+          <li><span class="check">✓</span> Ratings, on-time rate &amp; reliability score</li>
+        </ul>
+      </div>
+    </div>
+
+    {# ── Right: login card ── #}
+    <div class="auth-card">
+      <h3>Welcome back</h3>
+      <p class="auth-sub">Log in to continue</p>
+
+      <form method="post" action="{{ url_for('login') }}">
+
+        {# Segmented role selector — name="role" is required by the backend #}
+        <div class="form-group">
+          <label class="form-label">I am a…</label>
+          <div class="seg-control">
+            <input type="radio" name="role" id="r-cust"  value="customer" checked>
+            <label for="r-cust">Customer</label>
+            <input type="radio" name="role" id="r-work"  value="worker">
+            <label for="r-work">Worker</label>
+            <input type="radio" name="role" id="r-admin" value="admin">
+            <label for="r-admin">Admin</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="lemail">Email</label>
+          <input class="form-control" type="email" id="lemail" name="email"
+                 placeholder="you@example.com" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="lpass">Password</label>
+          <input class="form-control" type="password" id="lpass" name="password"
+                 placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:.5rem">
+          Log in
+        </button>
+      </form>
+
+      <p class="auth-footer">
+        New here? <a href="{{ url_for('register') }}">Create an account</a>
+      </p>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

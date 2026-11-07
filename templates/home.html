@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %} – Find a Service{% endblock %}
+
+{% set icons = {
+  'AC Repair':       '❄️',
+  'Electrical Work': '⚡',
+  'Plumbing':        '🔧',
+  'Carpentry':       '🪚',
+  'Appliance Repair':'🔌'
+} %}
+
+{% block body %}
+
+{# ── Hero ── #}
+<div class="home-hero">
+  <div>
+    <span class="hero-badge">✦ Verified professionals only</span>
+    <h2>What do you need fixed today?</h2>
+    <p>Choose a category to browse verified workers with transparent ratings and on-time records.</p>
+  </div>
+  <span class="hero-emoji">🛠️</span>
+</div>
+
+{# ── Service tiles ── #}
+<div class="section-row">
+  <h4>Service categories</h4>
+  {% if sel %}
+    <a href="{{ url_for('home') }}" class="btn btn-outline btn-sm">Clear ✕</a>
+  {% endif %}
+</div>
+
+<div class="svc-grid" id="svc-grid">
+  {% for s in services %}
+    <a class="svc-tile {% if sel == s.service_id %}active{% endif %}"
+       href="{{ url_for('home', service_id=s.service_id) }}"
+       data-name="{{ s.service_name|lower }}">
+      <span class="ico">{{ icons.get(s.service_name, '🔨') }}</span>
+      <span class="nm">{{ s.service_name }}</span>
+    </a>
+  {% endfor %}
+</div>
+
+{# ── Worker results ── #}
+{% if sel %}
+  {# Search + sort controls #}
+  <div class="search-sort-row">
+    <div class="search-box">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+      </svg>
+      <input id="worker-search" type="search" placeholder="Search worker name…" autocomplete="off">
+    </div>
+    <div class="sort-chips">
+      <span class="sort-chip active" data-sort="rating">⭐ Rating</span>
+      <span class="sort-chip" data-sort="experience">🏅 Experience</span>
+      <span class="sort-chip" data-sort="completed">✅ Most done</span>
+    </div>
+  </div>
+
+  <div class="section-row">
+    <h4>Verified workers — {{ sel_name }}</h4>
+    <span class="badge badge-accepted" style="font-size:.75rem;padding:.25rem .75rem">
+      {{ workers|length }} available
+    </span>
+  </div>
+
+  {% if workers %}
+    {# Reliability tooltip text #}
+    {% set tip = "High = avg ≥4.5 & on-time ≥80%\nMedium = avg ≥3.5 & on-time ≥60%\nLow = otherwise\nNew = < 3 completed jobs" %}
+
+    <div class="worker-grid" id="worker-grid">
+      {% for w in workers %}
+        {# data-* attributes drive JS sort #}
+        <div class="wcard"
+             data-name="{{ w.name|lower }}"
+             data-rating="{{ w.avg_rating or 0 }}"
+             data-experience="{{ w.experience_years }}"
+             data-completed="{{ w.completed_jobs }}">
+
+          {# Header row #}
+          <div class="wcard-header">
+            {# Avatar with verified tick #}
+            <div class="wcard-avatar-wrap">
+              <div class="wcard-avatar">{{ w.name[0]|upper }}</div>
+              <span class="verified-tick" title="Verified worker">✓</span>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div class="wcard-name">{{ w.name }}</div>
+              <div class="wcard-exp">{{ w.experience_years }} yr{{ 's' if w.experience_years != 1 }} experience</div>
+              {# Rating mini-bar #}
+              <div class="rating-bar-wrap" style="margin-top:.35rem">
+                <div class="rating-bar-track">
+                  <div class="rating-bar-fill"
+                       style="width:{{ ((w.avg_rating or 0) / 5 * 100)|round|int }}%"></div>
+                </div>
+                <span class="rating-bar-val">
+                  {% if w.avg_rating is not none %}{{ w.avg_rating }}{% else %}–{% endif %}
+                </span>
+              </div>
+            </div>
+            {# Reliability badge with tooltip #}
+            <span class="rel-badge rel-{{ w.reliability }}"
+                  data-tip="{{ tip }}">{{ w.reliability }}</span>
+          </div>
+
+          {# Four stat boxes #}
+          <div class="wcard-stats">
+            <div class="wstat">
+              <span class="wst-val">{{ w.completed_jobs }}</span>
+              <span class="wst-lbl">Done</span>
+            </div>
+            <div class="wstat">
+              <span class="wst-val">{{ w.cancelled_jobs }}</span>
+              <span class="wst-lbl">Cancel</span>
+            </div>
+            <div class="wstat">
+              <span class="wst-val" style="color:var(--accent)">
+                {% if w.avg_rating is not none %}{{ w.avg_rating }}★{% else %}–{% endif %}
+              </span>
+              <span class="wst-lbl">Rating</span>
+            </div>
+            <div class="wstat">
+              <span class="wst-val">
+                {% if w.on_time_rate is not none %}{{ w.on_time_rate }}%{% else %}–{% endif %}
+              </span>
+              <span class="wst-lbl">On-time</span>
+            </div>
+          </div>
+
+          {# Book button #}
+          <a href="{{ url_for('book', worker_id=w.worker_id, service_id=sel) }}"
+             class="btn btn-primary btn-block">Book Now</a>
+        </div>
+      {% endfor %}
+    </div>
+
+    {# Empty state shown by JS when search has no results #}
+    <div id="worker-empty" class="empty-state" style="display:none">
+      <span class="es-icon">🔍</span>
+      <strong style="color:var(--text)">No workers match your search</strong>
+      <p>Try a different name or clear the search box.</p>
+    </div>
+
+    {# Reliability footnote #}
+    <div class="rel-footnote">
+      <strong>How reliability is calculated:</strong>&ensp;
+      <span class="rel-badge rel-New">New</span> = fewer than 3 completed jobs &nbsp;·&nbsp;
+      <span class="rel-badge rel-High">High</span> = avg rating ≥ 4.5 and on-time ≥ 80% &nbsp;·&nbsp;
+      <span class="rel-badge rel-Medium">Medium</span> = avg rating ≥ 3.5 and on-time ≥ 60% &nbsp;·&nbsp;
+      <span class="rel-badge rel-Low">Low</span> = otherwise
+    </div>
+
+  {% else %}
+    <div class="empty-state">
+      <span class="es-icon">🔍</span>
+      <strong style="color:var(--text)">No verified workers yet</strong>
+      <p>There are no verified workers for this service right now. Try another category or check back soon.</p>
+    </div>
+  {% endif %}
+
+{% endif %}
+
+{% endblock %}

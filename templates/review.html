@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %} – Review{% endblock %}
+{% block body %}
+
+<div class="review-wrap">
+
+  <div class="page-header" style="margin-bottom:.5rem">
+    <h3>Review Job</h3>
+    <a href="{{ url_for('my_requests') }}" class="btn btn-outline btn-sm">← My Requests</a>
+  </div>
+  <p style="color:var(--muted);margin-bottom:1.5rem;font-size:.88rem">
+    Worker: <strong style="color:var(--text)">{{ job.worker_name }}</strong>
+  </p>
+
+  {# ── Review card ── #}
+  <div class="card">
+    <div class="card-header">Your Rating</div>
+    <div class="card-body">
+
+      {% if job.reviewed %}
+        <div class="already-reviewed">
+          ✓ You have already submitted a review for this job.
+        </div>
+
+      {% else %}
+        {# Form field names: rating (radio 1-5), comment — required by backend #}
+        <form method="post">
+
+          <div class="form-group">
+            <label class="form-label">Star rating</label>
+
+            {# Visual star picker backed by hidden radio inputs named "rating" #}
+            <div style="margin:.4rem 0 .25rem">
+              <div class="star-picker" id="star-picker">
+                {% for i in range(1, 6) %}
+                  <input type="radio" name="rating" id="s{{ i }}" value="{{ i }}"
+                         style="position:absolute;opacity:0;width:0;height:0"
+                         {% if i == 5 %}checked{% endif %}>
+                  <label class="sp-star" for="s{{ i }}" data-val="{{ i }}">★</label>
+                {% endfor %}
+              </div>
+            </div>
+            <p class="form-hint" id="star-hint">5 stars – Excellent</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cmt">Feedback</label>
+            <textarea class="form-control" id="cmt" name="comment" rows="3"
+                      placeholder="Describe your experience…"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Submit Review</button>
+        </form>
+      {% endif %}
+
+    </div>
+  </div>
+
+  {# ── Complaint card ── #}
+  <div class="card">
+    <div class="card-header" style="color:var(--danger)">⚠ Report a Problem</div>
+    <div class="card-body">
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem">
+        Had an issue with this job? Our admin team will review your complaint.
+      </p>
+      {# action → url_for('complaint', job_id=…); field name: description #}
+      <form method="post" action="{{ url_for('complaint', job_id=job.job_id) }}">
+        <div class="form-group">
+          <label class="form-label" for="cdesc">Describe the issue</label>
+          <textarea class="form-control" id="cdesc" name="description" rows="3"
+                    placeholder="e.g. Worker arrived late, left the area unclean…" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-outline-danger btn-sm">Submit Complaint</button>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const stars = document.querySelectorAll('#star-picker .sp-star');
+  const hint  = document.getElementById('star-hint');
+  const labels = ['','1 star – Very poor','2 stars – Poor','3 stars – Average',
+                  '4 stars – Good','5 stars – Excellent'];
+
+  /* Light up stars 1..n */
+  function paint(n) {
+    stars.forEach((s, i) => s.classList.toggle('on', i < n));
+    hint.textContent = labels[n] || '';
+  }
+
+  /* Default: 5 stars */
+  paint(5);
+
+  stars.forEach((s, i) => {
+    s.addEventListener('click',     () => paint(i + 1));
+    s.addEventListener('mouseover', () => paint(i + 1));
+  });
+
+  /* On mouse-leave restore to current radio value */
+  document.getElementById('star-picker').addEventListener('mouseleave', () => {
+    const checked = document.querySelector('input[name="rating"]:checked');
+    paint(checked ? +checked.value : 5);
+  });
+})();
+</script>
+{% endblock %}

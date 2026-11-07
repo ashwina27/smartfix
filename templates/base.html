@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartFix{% block title %}{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+{# ── Sticky dark navbar ── #}
+<nav class="navbar-sf">
+  <div class="page-wrap">
+    <div class="inner">
+
+      {# Logo #}
+      <a class="brand" href="/">
+        <span class="brand-mark">🔧</span>SmartFix
+      </a>
+
+      {# Desktop: role-specific links #}
+      {% if session.role == 'customer' %}
+        <div class="nav-links">
+          <a href="{{ url_for('home') }}"
+             {% if request.endpoint == 'home' %}class="active"{% endif %}>Find a Service</a>
+          <a href="{{ url_for('my_requests') }}"
+             {% if request.endpoint == 'my_requests' %}class="active"{% endif %}>My Requests</a>
+        </div>
+      {% elif session.role == 'worker' %}
+        <div class="nav-links">
+          <a href="{{ url_for('worker_dashboard') }}"
+             {% if request.endpoint == 'worker_dashboard' %}class="active"{% endif %}>Dashboard</a>
+        </div>
+      {% elif session.role == 'admin' %}
+        <div class="nav-links">
+          <a href="{{ url_for('admin_dashboard') }}"
+             {% if request.endpoint == 'admin_dashboard' %}class="active"{% endif %}>Dashboard</a>
+        </div>
+      {% endif %}
+
+      {# Desktop: user pill + logout #}
+      {% if session.role %}
+        <div class="nav-right">
+          <div class="nav-user">
+            <div class="nav-avatar">{{ (session.name or 'U')[0]|upper }}</div>
+            <span class="uname">{{ session.name }}</span>
+            <span class="urole">{{ session.role }}</span>
+          </div>
+          <a class="btn-logout" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+      {% endif %}
+
+      {# Mobile: hamburger button (visible only on narrow screens via CSS) #}
+      {% if session.role %}
+        <button class="nav-hamburger" id="hamburger-btn"
+                aria-label="Toggle navigation" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      {% endif %}
+
+    </div>
+
+    {# Mobile nav drawer #}
+    {% if session.role %}
+      <nav class="mobile-nav" id="mobile-nav" aria-label="Mobile navigation">
+        {% if session.role == 'customer' %}
+          <a href="{{ url_for('home') }}"
+             {% if request.endpoint == 'home' %}class="active"{% endif %}>🔍 Find a Service</a>
+          <a href="{{ url_for('my_requests') }}"
+             {% if request.endpoint == 'my_requests' %}class="active"{% endif %}>📋 My Requests</a>
+        {% elif session.role == 'worker' %}
+          <a href="{{ url_for('worker_dashboard') }}"
+             {% if request.endpoint == 'worker_dashboard' %}class="active"{% endif %}>📊 Dashboard</a>
+        {% elif session.role == 'admin' %}
+          <a href="{{ url_for('admin_dashboard') }}"
+             {% if request.endpoint == 'admin_dashboard' %}class="active"{% endif %}>📊 Dashboard</a>
+        {% endif %}
+        <div class="mobile-divider"></div>
+        <span style="padding:.4rem 1rem;font-size:.78rem;color:var(--muted)">
+          {{ session.name }} · {{ session.role }}
+        </span>
+        <a href="{{ url_for('logout') }}">🚪 Logout</a>
+      </nav>
+    {% endif %}
+
+  </div>
+</nav>
+
+{# ── Main content ── #}
+<div class="page-wrap">
+
+  {# Flash messages #}
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      <div class="flash-stack">
+        {% for cat, msg in msgs %}
+          <div class="flash flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block body %}{% endblock %}
+</div>
+
+<footer class="site-footer">
+  <span class="footer-brand">🔧 SmartFix</span>
+  <span>Smart Service Provider Management System &mdash; DBS College Project 2026</span>
+</footer>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

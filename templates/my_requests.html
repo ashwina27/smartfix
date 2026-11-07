@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %} – My Requests{% endblock %}
+
+{% set status_cls = {
+  'Pending':     'badge-pending',
+  'Accepted':    'badge-accepted',
+  'In Progress': 'badge-inprogress',
+  'Completed':   'badge-completed',
+  'Rejected':    'badge-rejected',
+  'Cancelled':   'badge-cancelled'
+} %}
+
+{#
+  Stepper macro: renders a horizontal progress bar for a single request.
+  Steps: Pending → Accepted → In Progress → Completed
+  Cancelled or Rejected collapse to a red end-state.
+#}
+{% macro stepper(status) %}
+  {% if status in ('Cancelled', 'Rejected') %}
+    {# Red end-state #}
+    <div class="stepper" style="margin:.6rem 0 .25rem">
+      {% for lbl in ['Pending', status] %}
+        <div class="step cancelled">
+          <div class="step-dot">✕</div>
+          <div class="step-label">{{ lbl }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    {% set steps = ['Pending', 'Accepted', 'In Progress', 'Completed'] %}
+    {# Find the current step index (0-based) #}
+    {% set cur_idx = namespace(v=0) %}
+    {% for s in steps %}{% if s == status %}{% set cur_idx.v = loop.index0 %}{% endif %}{% endfor %}
+    <div class="stepper" style="margin:.6rem 0 .25rem">
+      {% for lbl in steps %}
+        {% set i = loop.index0 %}
+        {% if i < cur_idx.v %}
+          <div class="step done">
+            <div class="step-dot">✓</div>
+            <div class="step-label">{{ lbl }}</div>
+          </div>
+        {% elif i == cur_idx.v %}
+          <div class="step active">
+            <div class="step-dot">{{ loop.index }}</div>
+            <div class="step-label">{{ lbl }}</div>
+          </div>
+        {% else %}
+          <div class="step">
+            <div class="step-dot">{{ loop.index }}</div>
+            <div class="step-label">{{ lbl }}</div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% block body %}
+
+<div class="page-header">
+  <h3>My Requests</h3>
+  <a href="{{ url_for('home') }}" class="btn btn-primary btn-sm">+ Book a Service</a>
+</div>
+
+{% if rows %}
+  <div class="table-wrap">
+    <table class="sf-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Service &amp; Progress</th>
+          <th>Worker</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Cost</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td style="color:var(--muted);font-size:.8rem;vertical-align:top;padding-top:1.1rem">
+            #{{ r.request_id }}
+          </td>
+          <td>
+            <strong>{{ r.service_name }}</strong>
+            {# Inline stepper under the service name #}
+            {{ stepper(r.status) }}
+          </td>
+          <td>{{ r.worker_name }}</td>
+          <td style="white-space:nowrap;font-size:.82rem">
+            {{ r.preferred_date.strftime('%d %b %Y') if r.preferred_date else '—' }}
+          </td>
+          <td>
+            <span class="badge {{ status_cls.get(r.status, '') }}">{{ r.status }}</span>
+          </td>
+          <td>
+            {% if r.actual_cost is not none %}
+              <span style="color:var(--success);font-weight:600">₹{{ '%.0f'|format(r.actual_cost) }}</span>
+            {% else %}
+              <span style="color:var(--muted)">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="action-group">
+              {% if r.status in ('Pending', 'Accepted') %}
+                <form method="post" action="{{ url_for('cancel', rid=r.request_id) }}"
+                      onsubmit="return confirm('Cancel this request?')">
+                  <button class="btn btn-outline-danger btn-sm no-load">Cancel</button>
+                </form>
+              {% elif r.status == 'Completed' and r.job_id %}
+                <a href="{{ url_for('review_page', job_id=r.job_id) }}"
+                   class="btn btn-outline btn-sm">
+                  {% if r.review_id %}View Review{% else %}Review / Report{% endif %}
+                </a>
+              {% else %}
+                <span style="color:var(--muted);font-size:.78rem">—</span>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+{% else %}
+  <div class="empty-state">
+    <span class="es-icon">📋</span>
+    <strong style="color:var(--text)">No requests yet</strong>
+    <p>You haven't booked any services. Find a verified worker and send your first request.</p>
+    <a href="{{ url_for('home') }}" class="btn btn-primary" style="margin-top:1.25rem">
+      Find a Service
+    </a>
+  </div>
+{% endif %}
+
+{% endblock %}
